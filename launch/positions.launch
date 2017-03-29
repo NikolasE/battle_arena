@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>  
+
+<!--include file="$(find tf2_extensions)/launch/tf2_static_transform_publisher.launch">
+  <arg name="config_file" value="cman:transformations/wrist_1_ensenso.yaml" />
+ </include>
+
+<include file="$(find tf2_extensions)/launch/tf2_static_transform_publisher.launch">
+  <arg name="config_file" value="cman:transformations/palette_corner.yaml" />
+ </include-->
+
+  <node name="pylon_marker" pkg="tf2_ros" type="static_transform_publisher" args="-0.030777 0.071983 0.506373   0.983577 -0.016197 0.063854 0.168037  pylon marker"/>
+ 
+</launch>
