@@ -32,8 +32,8 @@ class ArenaManager:
 
     def setup(self):
         p1 = PlayerRobot(player_id=1, team_id=1, name="red player")
-        p1.position = [20, 20]
-        p1.velocity = 10
+        p1.position = [200, 200]
+        p1.velocity = 0
         p1.yaw = 45 / 180.0 * pi
         self.arena_objects.append(p1)
 
@@ -90,10 +90,10 @@ if __name__ == "__main__":
     # cv2.namedWindow("arena")
 
     game_duration = 10
-    step = 0.1
+    step = 0.02
 
-    # for i in range(1000):
-    while True:
+    for i in range(1000):
+    # while True:
         am.iterate(step)
         game_duration -+ step
         if game_duration < 0:
@@ -108,4 +108,3 @@ if __name__ == "__main__":
             break
 
         # rospy.sleep(0.2)
-

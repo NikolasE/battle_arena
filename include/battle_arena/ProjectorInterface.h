@@ -30,6 +30,7 @@ private:
 	cv::Scalar background_color_;
 
 	ros::Publisher pub_objects_projector_;
+	ros::Publisher pub_proj_intrinsics;
 };
 
 #endif

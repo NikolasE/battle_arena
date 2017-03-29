@@ -146,7 +146,6 @@ class Rocket(ArenaObject):
     def move(self, dt):
         super(Rocket, self).move(dt)
         self.lifetime -= dt
-        print self.lifetime
         if self.lifetime < 0:
             self.to_be_deleted = True
 
@@ -218,17 +217,17 @@ class PlayerRobot(ArenaObject):
         assert damage > 0
         if self.shield > damage:
             self.shield -= damage
-            rospy.loginfo("player %i: shield protected hp, now at %i+%i", self.id, self.shield, self.hp)
+            rospy.loginfo("player %i: shield protected hp, now at %i+%i", self.player_id, self.shield, self.hp)
             return
 
         damage -= self.shield
         self.shield = 0
 
         self.hp -= damage
-        rospy.loginfo("player %i got %i damage, no shield, remaining hp: %i", self.id, damage, self.hp)
+        rospy.loginfo("player %i got %i damage, no shield, remaining hp: %i", self.player_id, damage, self.hp)
 
         if not self.is_alive():
-            rospy.logwarn("Player %i died", self.id)
+            rospy.logwarn("Player %i died", self.player_id)
 
     def is_alive(self):
         return self.hp > 0

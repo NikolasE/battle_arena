@@ -25,6 +25,19 @@ BattleProjectorInterface::BattleProjectorInterface() :
 
 	ProjectorCalibrator::readCalibration(data_folder_path_+"/projector_calib.bag", projector_intrinsics, projector2camera_);
 
+	/// TODO: move to function
+	ros::Publisher pub_tf_static = nh_private_.advertise<tf2_msgs::TFMessage>("/tf_static", 1);
+	pub_proj_intrinsics = nh_private_.advertise<sensor_msgs::CameraInfo>("/projector_intrinsics", 1, true);
+
+	ros::Duration(0.5).sleep();
+
+	tf2_msgs::TFMessage tfm;
+	tfm.transforms.push_back(projector2camera_);
+	pub_tf_static.publish(tfm);
+
+	pub_proj_intrinsics.publish(projector_intrinsics);
+
+
 	pinhole_.fromCameraInfo(projector_intrinsics);
 
 	tf2_ros::BufferClient tf2_client("/tf2_buffer_server", 200.0);
@@ -34,7 +47,7 @@ BattleProjectorInterface::BattleProjectorInterface() :
 		return;
 	}
 
-	arena_frame_ = nh_private_.param<std::string>("/arena_frame", "arena");
+	arena_frame_ = nh_private_.param<std::string>("/arena_frame", "marker");
 	projector_frame_ = projector_intrinsics.header.frame_id;
 
 	try {
@@ -42,6 +55,7 @@ BattleProjectorInterface::BattleProjectorInterface() :
 													  ros::Time::now(), ros::Duration(0.5));
 	} catch (...) {
 		ROS_ERROR("TF2 exception %s to %s", arena_frame_.c_str(), projector_frame_.c_str());
+		return;
 	}
 
 	pub_objects_projector_ = nh_private_.advertise<pcl_cloud>("objects_projector_frame", 1);
@@ -53,6 +67,7 @@ BattleProjectorInterface::BattleProjectorInterface() :
 void BattleProjectorInterface::object_states_cb(const battle_arena_msgs::ArenaObjectStateListConstPtr& object_list)
 {
 	ROS_INFO_ONCE("Received first object states");
+	object_states.clear();
 	for (const auto& o: object_list->states)
 	{
 		object_states[o.object_id] = o;
@@ -74,7 +89,6 @@ void BattleProjectorInterface::draw_visualization_simple()
 	img_.setTo(background_color_);
 
 	pcl_cloud arena_positions;
-	ROS_INFO("Size: %zu", object_states.size());
 
 	if (object_states.size() == 0)
 	{
@@ -84,8 +98,7 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	for (const auto& o: object_states)
 	{
-		ROS_INFO("%f", o.second.pose.x_pos);
-		pcl::PointXYZ p(o.second.pose.x_pos/1000.0, o.second.pose.x_pos/1000.0, 0);
+		pcl::PointXYZ p(o.second.pose.x_pos/1000.0, o.second.pose.y_pos/1000.0, 0);
 		arena_positions.push_back(p);
 	}
 
@@ -97,6 +110,7 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	/// projecting points into projector
 	vector<cv::Point3f> points_3d;
+	ROS_INFO("in projector frame:");
 	for (const auto&p : projector_positions)
 	{
 		points_3d.push_back(Point3f(p.x, p.y, p.z));
@@ -108,11 +122,11 @@ void BattleProjectorInterface::draw_visualization_simple()
 	Mat tvec(1,3,CV_64FC1); tvec.setTo(0);
 
 	vector<Point2f> projected;
+	cout << rvec << tvec << endl;
 	cv::projectPoints(points_3d, rvec, tvec, pinhole_.fullIntrinsicMatrix(), pinhole_.distortionCoeffs(), projected);
 
-	cout << pinhole_.fullIntrinsicMatrix() << endl;
+//	cout << "Projector intrinsics " <<  pinhole_.fullIntrinsicMatrix() << endl;
 
-	ROS_INFO("%i %i", img_.cols, img_.rows);
 	/// simple visualization
 	for (const auto&p : projected)
 	{
