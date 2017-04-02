@@ -13,8 +13,14 @@ private:
 
 	cv::Mat img_; /// projector image
 	std::string arena_frame_; /// tf frame of arena
+	std::string depth_frame_; /// tf frame of arena
+
+
 	std::string projector_frame_; /// tf frame of projector
 	geometry_msgs::TransformStamped arena2projector_, projector2camera_;
+
+	geometry_msgs::TransformStamped arena2depth_; /// hack
+
 	image_geometry::PinholeCameraModel pinhole_;
 
 

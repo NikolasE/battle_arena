@@ -6,10 +6,10 @@ import numpy as np
 import cv2
 from battle_arena_msgs.msg import ArenaObjectState
 
-
 class ArenaObject(object):
     next_object_id = 100
-    r = 20
+    r = 0.1
+    px_per_m = -1
 
     def __init__(self, object_id=-1, name="no_name"):
         self.parent_frame = "arena"
@@ -22,6 +22,9 @@ class ArenaObject(object):
         self.y_dimension = -1
         self.visualization_state = 0  # something to run animations
         self.enabled = True
+        self.red = (0, 0, 255)
+        self.green = (0, 255, 0)
+        self.blue = (255, 0, 0)
 
         if object_id < 0:
             self.id = ArenaObject.next_object_id
@@ -52,15 +55,28 @@ class ArenaObject(object):
         d = other.position - self.position
         return atan2(float(d[1]), float(d[0]))
 
+    def set_pose(self, x, y, yaw):
+        assert abs(yaw) < 10
+        self.set_position(x, y)
+        self.yaw = yaw
+
     def set_position(self, x, y):
         self.position[0] = float(x)
         self.position[1] = float(y)
 
-    def ellipse(self, img, radius, color, ratio=1, thickness=5):
-        cv2.ellipse(img, self.get_int_pos(), (int(radius), int(radius)), 0, 0, int(360*ratio), color, thickness)
+    def circle(self, img, radius_m, color, thickness=5):
+        if 0 < thickness < 1:
+            thickness = int(thickness * self.px_per_m)
+        cv2.circle(img, self.get_pixel_pos(), int(radius_m * self.px_per_m), color, thickness)
 
-    def get_int_pos(self):
-        return int(self.position[0]), int(self.position[1])
+    def ellipse(self, img, radius_m, color, ratio=1, thickness=5):
+        if 0 < thickness < 1:
+            thickness = int(thickness*self.px_per_m)
+        cv2.ellipse(img, self.get_pixel_pos(), (int(radius_m * self.px_per_m),
+                                                int(radius_m*self.px_per_m)), 0, 0, int(360*ratio), color, thickness)
+
+    def get_pixel_pos(self):
+        return int(self.position[0]*self.px_per_m), int(self.position[1]*self.px_per_m)
 
     def move(self, dt):
         self.position[0] += dt * self.velocity * cos(self.yaw)
@@ -69,7 +85,7 @@ class ArenaObject(object):
     def visualize(self, img):
         if not self.enabled:
             return
-        cv2.circle(img, self.get_int_pos(), self.r, (255, 255, 255), -1)
+        self.circle(img, self.r, (255, 255, 255), -1)
 
     def interact(self, other):
         assert isinstance(other, ArenaObject)
@@ -81,8 +97,8 @@ class ArenaObject(object):
 
 
 class Sentry(ArenaObject):
-    reload_time = 3
-    max_fire_distance = 500
+    reload_time = 6
+    max_fire_distance = 0.5
 
     def __init__(self, team_id):
         ArenaObject.__init__(self)
@@ -94,7 +110,7 @@ class Sentry(ArenaObject):
         self.remaining_reload_time -= dt
 
     def visualize(self, img):
-        cv2.circle(img, self.get_int_pos(), self.r, (0, 255, 255), -1)
+        self.circle(img, 0.05, (255, 0, 255), thickness=-1)
         self.ellipse(img, Sentry.max_fire_distance, (255, 0, 255), thickness=2)
 
     def get_state_msg(self):
@@ -120,10 +136,11 @@ class Sentry(ArenaObject):
             return
 
         # rospy.loginfo("Firing on player %i", other.player_id)
+        print "shooting towards", other.get_pixel_pos()
         self.remaining_reload_time = Sentry.reload_time
 
         r = Rocket(shooter_id=self.id, team_id=self.team_id)
-        r.velocity = 30
+        r.velocity = 0.1
         r.position = np.copy(self.position)
         r.yaw = self.get_angle_towards(other)
 
@@ -139,7 +156,7 @@ class Rocket(ArenaObject):
         self.velocity = 0
         self.shooter_id = shooter_id
         self.team_id = team_id
-        self.trigger_distance = 10
+        self.trigger_distance = 0.15
         self.type = ArenaObjectState.ROCKET
         self.lifetime = Rocket.max_lifetime
 
@@ -152,8 +169,11 @@ class Rocket(ArenaObject):
     def visualize(self, img):
         if not self.enabled or self.to_be_deleted:
             return
-        cv2.circle(img, self.get_int_pos(), self.r/2, (0, 255, 255), -1)
-        cv2.circle(img, self.get_int_pos(), self.trigger_distance, (0, 0, 255), 2)
+        self.circle(img, self.r, (0, 255, 255), -1)
+        self.circle(img, self.trigger_distance, (0, 0, 255), 2)
+
+        # cv2.circle(img, self.get_int_pos(), self.r/2*self.px_per_m, (0, 255, 255), -1)
+        # cv2.circle(img, self.get_int_pos(), self.trigger_distance*self.px_per_m, (0, 0, 255), 2)
 
     def interact(self, other):
         if not self.enabled or self.to_be_deleted:
@@ -176,6 +196,7 @@ class Rocket(ArenaObject):
         rospy.loginfo("Player %i was hit by a rocket", other.player_id)
         other.apply_damage(self.damage)
         self.enabled = False  # or after animation
+        self.to_be_deleted = True
 
 
 class PlayerRobot(ArenaObject):
@@ -195,23 +216,33 @@ class PlayerRobot(ArenaObject):
         self.player_color = (255, 0, 0) if player_id == 1 else (0, 255, 0)
         self.type = ArenaObjectState.PLAYER
 
+    def move(self, dt):
+        # updated by markers (and maybe extrapolation)
+        pass
+
     def no_move(self, dt):
         pass
 
+    def get_state_msg(self):
+        msg = self._get_state_msg_base()
+        msg.player_hp = self.hp
+        msg.player_shield = self.shield
+        return msg
+
     def visualize(self, img):
         # player
-        cv2.circle(img, self.get_int_pos(), self.r, self.player_color, -1)
+        self.circle(img, self.r, self.player_color, -1)
 
         if not self.is_alive():
-            cv2.circle(img, self.get_int_pos(), self.r-10, (0, 0, 255), -1)
+            self.circle(img, 0.05, self.red, -1)
             self.move = self.no_move
             return
 
         # shield
         if self.shield > 0:
-            self.ellipse(img, self.r+20, (0, 255, 255), self.shield*1.0/PlayerRobot.max_shield, thickness=2)
+            self.ellipse(img, self.r + 0.05, (0, 255, 255), self.shield * 1.0 / PlayerRobot.max_shield, thickness=0.01)
         # hp
-        self.ellipse(img, self.r + 10, (0, 255, 0), self.hp*1.0/PlayerRobot.max_hp, thickness=2)
+        self.ellipse(img, self.r + 0.03, (0, 255, 0), self.hp * 1.0 / PlayerRobot.max_hp, thickness=2)
 
     def apply_damage(self, damage):
         assert damage > 0
@@ -239,7 +270,7 @@ class ShieldToken(ArenaObject):
     def __init__(self):
         ArenaObject.__init__(self)
         self.strength = 50
-        self.activation_distance = 30
+        self.activation_distance = 0.3
         self.remaining_recharge_time = -1
         self.type = ArenaObjectState.SHIELD
 
@@ -254,12 +285,14 @@ class ShieldToken(ArenaObject):
         return msg
 
     def visualize(self, img):
-        cv2.circle(img, self.get_int_pos(), self.r, (0, 255, 0), -1)
+        # cv2.circle(img, self.get_int_pos(), self.r*self.px_per_m, (0, 255, 0), -1)
+        self.circle(img, self.r, self.green, -1)
 
         # overpaint with growing partial circle during recharge
         if self.remaining_recharge_time > 0:
-            cv2.circle(img, self.get_int_pos(), self.r, (0, 100, 0), -1)
-            self.ellipse(img, self.r, (0, 255, 0), 1-self.remaining_recharge_time*1.0/ShieldToken.recharge_time,
+            self.circle(self.r, (0, 100, 0), -1)
+            # cv2.circle(img, self.get_int_pos(), self.r*self.px_per_m, (0, 100, 0), -1)
+            self.ellipse(img, self.r, (0, 255, 0), 1 - self.remaining_recharge_time * 1.0 / ShieldToken.recharge_time,
                          thickness=-1)
 
     def interact(self, other):
@@ -280,8 +313,8 @@ class ShieldToken(ArenaObject):
 
 if __name__ == "__main__":
 
-    p1 = PlayerRobot(player_id=1, team_id=1, name="red player")
-    p1.velocity = 10
+    p1 = Rocket(1, 2)
+    p1.velocity = 0.1
     p1.yaw = 45/180.0*pi
 
     l = [p1]

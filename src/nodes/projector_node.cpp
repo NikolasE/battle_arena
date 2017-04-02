@@ -8,6 +8,12 @@ int main(int argc, char** argv)
 
 	BattleProjectorInterface bpi;
 
-	ros::spin();
+	ros::Rate r(100);
+	while (ros::ok())
+	{
+	  ros::spinOnce();                   // Handle ROS events
+
+	  r.sleep();
+	}
 	return 0;
 }

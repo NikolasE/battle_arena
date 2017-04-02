@@ -58,8 +58,18 @@ BattleProjectorInterface::BattleProjectorInterface() :
 		return;
 	}
 
+
+	depth_frame_ = "rgbd_cam_rgb_optical_frame";
+	try {
+		arena2depth_ = tf2_client.lookupTransform(depth_frame_, arena_frame_,
+													  ros::Time::now(), ros::Duration(0.5));
+	} catch (...) {
+		ROS_ERROR("TF2 exception %s to %s", arena_frame_.c_str(), depth_frame_.c_str());
+		return;
+	}
+
 	pub_objects_projector_ = nh_private_.advertise<pcl_cloud>("objects_projector_frame", 1);
-	redraw_timer_ = nh_private_.createTimer(ros::Duration(0.1), &BattleProjectorInterface::redraw_trigger, this);
+	redraw_timer_ = nh_private_.createTimer(ros::Duration(0.05), &BattleProjectorInterface::redraw_trigger, this);
 }
 
 
@@ -77,7 +87,7 @@ void BattleProjectorInterface::object_states_cb(const battle_arena_msgs::ArenaOb
 
 void BattleProjectorInterface::redraw_trigger(const ros::TimerEvent& e)
 {
-	ROS_INFO("Drawing, last call took %.1f ms", e.profile.last_duration.toSec()*100.0);
+//	ROS_INFO("Drawing, last call took %.1f ms", e.profile.last_duration.toSec()*100.0);
 	draw_visualization_simple();
 }
 
@@ -85,7 +95,7 @@ void BattleProjectorInterface::redraw_trigger(const ros::TimerEvent& e)
  * @brief BattleProjectorInterface::draw_visualization_simple draws a simple visualization for testing
  */
 void BattleProjectorInterface::draw_visualization_simple()
-{
+{	
 	img_.setTo(background_color_);
 
 	pcl_cloud arena_positions;
@@ -98,40 +108,89 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	for (const auto& o: object_states)
 	{
-		pcl::PointXYZ p(o.second.pose.x_pos/1000.0, o.second.pose.y_pos/1000.0, 0);
+		pcl::PointXYZ p(o.second.pose.x_pos, o.second.pose.y_pos, 0);
 		arena_positions.push_back(p);
 	}
 
-	/// transform points into projector frame
-	pcl_cloud projector_positions;
-	pcl::transformPointCloud(arena_positions, projector_positions, tf2::transformToEigen(arena2projector_));
-	projector_positions.header.frame_id = projector_frame_;
-	pub_objects_projector_.publish(projector_positions);
+	/// transform points into depth camera frame
+	pcl_cloud depth_positions;
+	pcl::transformPointCloud(arena_positions, depth_positions, tf2::transformToEigen(arena2depth_));
+	depth_positions.header.frame_id = depth_frame_;
+	pub_objects_projector_.publish(depth_positions);
 
 	/// projecting points into projector
 	vector<cv::Point3f> points_3d;
 	ROS_INFO("in projector frame:");
-	for (const auto&p : projector_positions)
+	for (const auto&p : depth_positions)
 	{
 		points_3d.push_back(Point3f(p.x, p.y, p.z));
 		ROS_INFO("3d: %f %f %f", p.x, p.y, p.z);
 	}
 
-	/// no further transformation (we could fill these with the arena2projector_ transformation)
+//	/// no further transformation (we could fill these with the arena2projector_ transformation)
 	Mat rvec(1,3,CV_64FC1); rvec.setTo(0);
 	Mat tvec(1,3,CV_64FC1); tvec.setTo(0);
 
+	geometry_msgs::TransformStamped depth2projector = ProjectorCalibrator::invert(projector2camera_);
+	geometryTransform2openCV(depth2projector.transform, rvec, tvec);
+
+
 	vector<Point2f> projected;
-	cout << rvec << tvec << endl;
+//	cout << rvec << tvec << endl;
 	cv::projectPoints(points_3d, rvec, tvec, pinhole_.fullIntrinsicMatrix(), pinhole_.distortionCoeffs(), projected);
 
 //	cout << "Projector intrinsics " <<  pinhole_.fullIntrinsicMatrix() << endl;
 
 	/// simple visualization
-	for (const auto&p : projected)
+//	for (const auto&p : projected)
+//	{
+//		ROS_INFO("%f %f ", p.x, p.y);
+//		cv::circle(img_, p, 100, CV_RGB(0, 0, 255), -1);
+//	}
+
+
+//	for (size_t i=0; i<object_states.size(); ++i)
+	int i=-1;
+	for (const auto& s: object_states)
 	{
-		ROS_INFO("%f %f ", p.x, p.y);
-		cv::circle(img_, p, 100, CV_RGB(0, 0, 255), -1);
+		i+=1;
+		const Point& p = Point(projected[i].x, projected[i].y);
+		battle_arena_msgs::ArenaObjectState state = s.second;
+		ROS_INFO("Visualizaing type %i", state.type);
+
+
+		if (state.type == state.ROCKET)
+		{
+			cv::circle(img_, p, 20, CV_RGB(255, 0, 0), -1);
+		}
+
+		if (state.type == state.SENTRY)
+		{
+			cv::circle(img_, p, 100, CV_RGB(100, 100, 0), -1);
+
+		}
+
+		if (state.type == state.PLAYER)
+		{
+			ROS_INFO("player: %f %f", state.player_hp, state.player_shield);
+
+			float hp = state.player_hp;
+			float shield = state.player_shield;
+
+			if (hp <=0)
+			{
+				cv::circle(img_, p, 70, CV_RGB(255, 0, 0), -1);
+			}else
+			{
+				if (shield > 0)
+				{
+//					cv::ellipse(img_, p, Size(120,120), 0, 0, 360, CV_RGB(0, 255, 255), 2);
+					cv::ellipse(img_, p, Size(100,100), 0, 0, shield/40.0*360, CV_RGB(255, 255, 255), 10);
+				}
+				cv::ellipse(img_, p, Size(90,90),0,0, hp/100.0*360, CV_RGB(0, 255, 0), 10);
+			}
+		}
+
 	}
 
 
