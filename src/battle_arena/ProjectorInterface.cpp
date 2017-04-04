@@ -59,7 +59,8 @@ BattleProjectorInterface::BattleProjectorInterface() :
 	}
 
 
-	depth_frame_ = "rgbd_cam_rgb_optical_frame";
+	depth_frame_ = "ensenso_base";
+	// depth_frame_ = "rgbd_cam_rgb_optical_frame";
 	try {
 		arena2depth_ = tf2_client.lookupTransform(depth_frame_, arena_frame_,
 													  ros::Time::now(), ros::Duration(0.5));
