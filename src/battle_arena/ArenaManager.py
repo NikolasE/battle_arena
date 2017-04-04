@@ -115,7 +115,9 @@ if __name__ == "__main__":
     step = 0.04
 
     # for i in range(1000):
+    r = rospy.Rate(100)
     while True:
+        r.sleep()
         am.update_player_poses()
 
         am.iterate(step)
@@ -125,9 +127,9 @@ if __name__ == "__main__":
 
         am.publish_object_states()
         am.visualize()
-        cv2.imshow("arena", am.arena_image)
+        #cv2.imshow("arena", am.arena_image)
         am.cleanup_objects()
-        cv2.waitKey(10)
+        #cv2.waitKey(10)
         if rospy.is_shutdown():
             break
 
