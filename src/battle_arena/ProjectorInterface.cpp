@@ -127,11 +127,9 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	/// projecting points into projector
 	vector<cv::Point3f> points_3d;
-	ROS_INFO("in projector frame:");
 	for (const auto&p : depth_positions)
 	{
 		points_3d.push_back(Point3f(p.x, p.y, p.z));
-		ROS_INFO("3d: %f %f %f", p.x, p.y, p.z);
 	}
 
 //	/// no further transformation (we could fill these with the arena2projector_ transformation)
@@ -163,8 +161,7 @@ void BattleProjectorInterface::draw_visualization_simple()
 		i+=1;
 		const Point& p = Point(projected[i].x, projected[i].y);
 		battle_arena_msgs::ArenaObjectState state = s.second;
-		ROS_INFO("Visualizaing type %i", state.type);
-
+		// ROS_INFO("Visualizaing type %i", state.type);
 
 		if (state.type == state.ROCKET)
 		{
@@ -179,7 +176,7 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 		if (state.type == state.PLAYER)
 		{
-			ROS_INFO("player: %f %f", state.player_hp, state.player_shield);
+			// ROS_INFO("player: %f %f", state.player_hp, state.player_shield);
 
 			float hp = state.player_hp;
 			float shield = state.player_shield;

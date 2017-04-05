@@ -12,7 +12,7 @@ class RobotTracker:
         self.marker_id_2_player = dict({1: 1, 0: 2})
         self.sub_markers = rospy.Subscriber("/ar_pose_marker", AlvarMarkers, self.marker_callback)
         self._player_poses = dict()
-        self.alpha = 0.95
+        self.alpha = 1
         rospy.sleep(0.5)
 
     def get_player_pose(self, player_id):
@@ -39,8 +39,8 @@ class RobotTracker:
                     self._player_poses[player] = [p.x, p.y, yaw]
                 else:
                     x,y,phi = self._player_poses[player]
-                    x = x + self.alpha*(p.x-x)
-                    y = y + self.alpha*(p.y-y)
+                    x += self.alpha*(p.x-x)
+                    y += self.alpha*(p.y-y)
                     self._player_poses[player] = [x, y, yaw]
 
 if __name__ == "__main__":
