@@ -12,7 +12,7 @@ using namespace cv;
 
 BattleProjectorInterface::BattleProjectorInterface() :
 	ProjectorCalibrator(),
-	use_projector_publisher_(true),  /// param?
+	use_projector_publisher_(false),  /// param?
 	background_color_(125,0,0)
 {
 	ROS_INFO("Subscribing");
@@ -103,7 +103,13 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	if (object_states.size() == 0)
 	{
-		send_image_to_projector(img_);
+		if (use_projector_publisher_)
+		{
+			send_image_to_projector(img_);
+		}else
+		{
+			image_screen_.show_image(img_);
+		}
 		return;
 	}
 
