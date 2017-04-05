@@ -136,7 +136,7 @@ class Sentry(ArenaObject):
             return
 
         # rospy.loginfo("Firing on player %i", other.player_id)
-        print "shooting towards", other.get_pixel_pos()
+        # print "shooting towards", other.get_pixel_pos()
         self.remaining_reload_time = Sentry.reload_time
 
         r = Rocket(shooter_id=self.id, team_id=self.team_id)

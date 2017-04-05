@@ -12,6 +12,7 @@ using namespace cv;
 
 BattleProjectorInterface::BattleProjectorInterface() :
 	ProjectorCalibrator(),
+	use_projector_publisher_(true),  /// param?
 	background_color_(125,0,0)
 {
 	ROS_INFO("Subscribing");
@@ -36,7 +37,6 @@ BattleProjectorInterface::BattleProjectorInterface() :
 	pub_tf_static.publish(tfm);
 
 	pub_proj_intrinsics.publish(projector_intrinsics);
-
 
 	pinhole_.fromCameraInfo(projector_intrinsics);
 
@@ -194,7 +194,11 @@ void BattleProjectorInterface::draw_visualization_simple()
 
 	}
 
-
-
-	send_image_to_projector(img_);
+	if (use_projector_publisher_)
+	{
+		send_image_to_projector(img_);
+	}else
+	{
+		image_screen_.show_image(img_);
+	}
 }

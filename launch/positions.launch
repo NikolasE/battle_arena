@@ -9,7 +9,13 @@
   <arg name="config_file" value="cman:transformations/palette_corner.yaml" />
  </include-->
 
-  <node name="pylon_marker" pkg="tf2_ros" type="static_transform_publisher" args="-0.125703 -0.496838 2.170146   0.984512 -0.008469 0.055268 -0.166164  marker pylon"/>
-  <node name="depth_marker" pkg="tf2_ros" type="static_transform_publisher" args="0.269002 -0.390827 1.574597   0.975904 0.017123 -0.031208 -0.215275 marker rgbd_cam_rgb_optical_frame "/>
+  <!--node name="pylon_marker" pkg="tf2_ros" type="static_transform_publisher" args="-0.128544 -0.641433 2.165108   0.985063 0.005586 0.051661 -0.164170  marker pylon"/-->
+  <node name="depth_marker" pkg="tf2_ros" type="static_transform_publisher" args="-0.086869 -0.624846 1.638299   0.981940 0.015519 -0.017452 -0.187747 marker ensenso_base "/>
+
+  <node name="area_depth" pkg="tf2_ros" type="static_transform_publisher" args="
+0.050484389234970874 -0.04734149561161535 0.013541408085936412   -0.0011352491648352336 0.00035579667613153137 -0.002638952847914861 0.9999958102641859 ensenso_base pylon "/>
 
 </launch>
+
+
+

@@ -3,6 +3,7 @@
 
 #include <projector_calibration/projector_calibration.h>
 #include <battle_arena_msgs/ArenaObjectStateList.h>
+#include <projector_calibration/ImageScreen.h>
 
 class BattleProjectorInterface : public ProjectorCalibrator
 {
@@ -10,6 +11,9 @@ public:
 	BattleProjectorInterface ();
 
 private:
+	bool use_projector_publisher_; /// true if images are send to projector via topic
+
+	ImageScreen image_screen_;
 
 	cv::Mat img_; /// projector image
 	std::string arena_frame_; /// tf frame of arena

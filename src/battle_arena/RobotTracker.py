@@ -9,7 +9,7 @@ from tf import transformations
 
 class RobotTracker:
     def __init__(self):
-        self.marker_id_2_player = dict({5: 1, 0: 2})
+        self.marker_id_2_player = dict({1: 1, 0: 2})
         self.sub_markers = rospy.Subscriber("/ar_pose_marker", AlvarMarkers, self.marker_callback)
         self._player_poses = dict()
         self.alpha = 0.95
